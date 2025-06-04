@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Pavel-Sergeev-ekb/sqlite-project/parcel"
-
 	_ "modernc.org/sqlite"
 )
 
@@ -107,7 +105,7 @@ func main() {
 	}
 	defer db.Close()
 
-	store := parcel.NewParcelStore(db) // создайте объект ParcelStore функцией NewParcelStore
+	store := NewParcelStore(db) // создайте объект ParcelStore функцией NewParcelStore
 
 	service := NewParcelService(store)
 

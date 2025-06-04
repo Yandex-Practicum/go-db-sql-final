@@ -1,8 +1,9 @@
-package parcel_test
+package main
 
 import (
 	"database/sql"
 	"math/rand"
+	"strconv"
 	"testing"
 	"time"
 
@@ -33,6 +34,8 @@ func TestAddGetDelete(t *testing.T) {
 	// prepare
 	db, err := sql.Open("sqlite", "tracker.db")
 	require.NoError(t, err)
+	defer db.Close()
+
 	store := NewParcelStore(db)
 	parcel := getTestParcel()
 
@@ -40,12 +43,13 @@ func TestAddGetDelete(t *testing.T) {
 	id, err := store.Add(parcel)
 	require.NoError(t, err)
 	require.Greater(t, id, 0)
+	parcel.Number = id
 
-	// get
+	// getgo test
 	// получите только что добавленную посылку, убедитесь в отсутствии ошибки
 	// проверьте, что значения всех полей в полученном объекте совпадают со значениями полей в переменной parcel
 
-	storedParcel, err := store.Get(id)
+	storedParcel, err := store.Get(parcel.Number)
 	require.NoError(t, err)
 	require.Equal(t, parcel.Client, storedParcel.Client)
 	require.Equal(t, parcel.Status, storedParcel.Status)
@@ -56,11 +60,13 @@ func TestAddGetDelete(t *testing.T) {
 	// delete
 	// удалите добавленную посылку, убедитесь в отсутствии ошибки
 	// проверьте, что посылку больше нельзя получить из БД
-	err = store.Delete(id)
+	err = store.Delete(parcel.Number)
 	require.NoError(t, err)
 
-	_, err = store.Get(id)
+	_, err = store.Get(parcel.Number)
 	require.Error(t, err)
+	require.Equal(t, "parcel with number "+strconv.Itoa(parcel.Number)+" not found", err.Error())
+
 }
 
 // TestSetAddress проверяет обновление адреса
@@ -68,6 +74,8 @@ func TestSetAddress(t *testing.T) {
 	// prepare
 	db, err := sql.Open("sqlite", "tracker.db")
 	require.NoError(t, err)
+
+	defer db.Close()
 	store := NewParcelStore(db)
 
 	// add
@@ -95,6 +103,7 @@ func TestSetStatus(t *testing.T) {
 	// prepare
 	db, err := sql.Open("sqlite", "tracker.db")
 	require.NoError(t, err)
+	defer db.Close()
 	store := NewParcelStore(db)
 
 	// add
@@ -121,6 +130,9 @@ func TestGetByClient(t *testing.T) {
 	// prepare
 	db, err := sql.Open("sqlite", "tracker.db")
 	require.NoError(t, err)
+
+	defer db.Close()
+
 	store := NewParcelStore(db)
 
 	parcels := []Parcel{
