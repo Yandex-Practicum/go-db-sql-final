@@ -103,7 +103,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer db.Close() // надо пересмотреть вебинар, там закрывали через функцию!!!!!!!!!!
+
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("db close error: %v", err)
+		}
+	}()
 
 	store := NewParcelStore(db)
 	service := NewParcelService(store)
@@ -164,8 +169,7 @@ func main() {
 	// удаление новой посылки
 	err = service.Delete(p.Number)
 	if err != nil {
-		fmt.Println(err)
-		return
+		fmt.Println("delete:", err)
 	}
 
 	// вывод посылок клиента

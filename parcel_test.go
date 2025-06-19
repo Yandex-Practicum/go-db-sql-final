@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -50,7 +51,7 @@ func TestAddGetDelete(t *testing.T) {
 	testParcel, err := store.Get(id)
 	require.NoError(t, err)
 	parcel.Number = id
-	require.Equal(t, parcel, testParcel)
+	assert.Equal(t, parcel, testParcel)
 
 	// delete
 	// удалите добавленную посылку, убедитесь в отсутствии ошибки
@@ -83,8 +84,9 @@ func TestSetAddress(t *testing.T) {
 
 	// check
 	// получите добавленную посылку и убедитесь, что адрес обновился
-	got, _ := store.Get(id)
-	require.Equal(t, newAddress, got.Address)
+	got, err := store.Get(id)
+	require.NoError(t, err)
+	assert.Equal(t, newAddress, got.Address)
 }
 
 // TestSetStatus проверяет обновление статуса
@@ -109,8 +111,9 @@ func TestSetStatus(t *testing.T) {
 
 	// check
 	// получите добавленную посылку и убедитесь, что статус обновился
-	got, _ := store.Get(id)
-	require.Equal(t, ParcelStatusSent, got.Status)
+	got, err := store.Get(id)
+	require.NoError(t, err)
+	assert.Equal(t, ParcelStatusSent, got.Status)
 }
 
 // TestGetByClient проверяет получение посылок по идентификатору клиента
@@ -153,15 +156,15 @@ func TestGetByClient(t *testing.T) {
 	// убедитесь в отсутствии ошибки
 	// убедитесь, что количество полученных посылок совпадает с количеством добавленных
 	require.NoError(t, err)
-	require.Len(t, storedParcels, len(parcels))
+	assert.Len(t, storedParcels, len(parcels))
 
 	// check
 	for _, parcel := range storedParcels {
 		// в parcelMap лежат добавленные посылки, ключ - идентификатор посылки, значение - сама посылка
 		// убедитесь, что все посылки из storedParcels есть в parcelMap
 		// убедитесь, что значения полей полученных посылок заполнены верно
-		require.Contains(t, parcelMap, parcel.Number, "unexpected parcel number %d", parcel.Number)
+		assert.Contains(t, parcelMap, parcel.Number, "unexpected parcel number %d", parcel.Number)
 		expected := parcelMap[parcel.Number]
-		require.Equal(t, expected, parcel)
+		assert.Equal(t, expected, parcel)
 	}
 }
