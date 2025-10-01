@@ -212,3 +212,207 @@ func TestGetByClient(t *testing.T) {
 		// убедитесь, что значения полей полученных посылок заполнены верно
 	}
 }
+
+func TestParcelService_Register(t *testing.T) {
+	db, err := sql.Open("sqlite", ":memory:")
+	require.NoError(t, err)
+	defer db.Close()
+
+	_, err = db.Exec(`CREATE TABLE parcel (
+        number INTEGER PRIMARY KEY AUTOINCREMENT,
+        client INTEGER,
+        status TEXT,
+        address TEXT,
+        created_at TEXT
+    )`)
+	require.NoError(t, err)
+
+	store := NewParcelStore(db)
+	service := NewParcelService(store)
+
+	parcel, err := service.Register(123, "Test Address")
+	require.NoError(t, err)
+	assert.Equal(t, ParcelStatusRegistered, parcel.Status)
+	assert.Equal(t, 123, parcel.Client)
+	assert.Equal(t, "Test Address", parcel.Address)
+	assert.NotEmpty(t, parcel.CreatedAt)
+}
+
+func TestParcelService_NextStatus_Flow(t *testing.T) {
+	db, err := sql.Open("sqlite", ":memory:")
+	require.NoError(t, err)
+	defer db.Close()
+
+	_, err = db.Exec(`CREATE TABLE parcel (
+        number INTEGER PRIMARY KEY AUTOINCREMENT,
+        client INTEGER,
+        status TEXT,
+        address TEXT,
+        created_at TEXT
+    )`)
+	require.NoError(t, err)
+
+	store := NewParcelStore(db)
+	service := NewParcelService(store)
+
+	parcel, err := service.Register(123, "Test Address")
+	require.NoError(t, err)
+
+	err = service.NextStatus(parcel.Number)
+	require.NoError(t, err)
+
+	updated, err := store.Get(parcel.Number)
+	require.NoError(t, err)
+	assert.Equal(t, ParcelStatusSent, updated.Status)
+
+	err = service.NextStatus(parcel.Number)
+	require.NoError(t, err)
+
+	updated, err = store.Get(parcel.Number)
+	require.NoError(t, err)
+	assert.Equal(t, ParcelStatusDelivered, updated.Status)
+
+	err = service.NextStatus(parcel.Number)
+	require.NoError(t, err)
+}
+
+func TestParcelService_ChangeAddress_OnlyForRegistered(t *testing.T) {
+	db, err := sql.Open("sqlite", ":memory:")
+	require.NoError(t, err)
+	defer db.Close()
+
+	_, err = db.Exec(`CREATE TABLE parcel (
+        number INTEGER PRIMARY KEY AUTOINCREMENT,
+        client INTEGER,
+        status TEXT,
+        address TEXT,
+        created_at TEXT
+    )`)
+	require.NoError(t, err)
+
+	store := NewParcelStore(db)
+	service := NewParcelService(store)
+
+	parcel, err := service.Register(123, "Original Address")
+	require.NoError(t, err)
+
+	err = service.ChangeAddress(parcel.Number, "New Address")
+	require.NoError(t, err)
+
+	updated, err := store.Get(parcel.Number)
+	require.NoError(t, err)
+	assert.Equal(t, "New Address", updated.Address)
+
+	err = service.NextStatus(parcel.Number)
+	require.NoError(t, err)
+
+	err = service.ChangeAddress(parcel.Number, "Another Address")
+	require.Error(t, err)
+}
+
+func TestParcelService_Delete_OnlyForRegistered(t *testing.T) {
+	db, err := sql.Open("sqlite", ":memory:")
+	require.NoError(t, err)
+	defer db.Close()
+
+	_, err = db.Exec(`CREATE TABLE parcel (
+        number INTEGER PRIMARY KEY AUTOINCREMENT,
+        client INTEGER,
+        status TEXT,
+        address TEXT,
+        created_at TEXT
+    )`)
+	require.NoError(t, err)
+
+	store := NewParcelStore(db)
+	service := NewParcelService(store)
+
+	parcel, err := service.Register(123, "Test Address")
+	require.NoError(t, err)
+
+	err = service.Delete(parcel.Number)
+	require.NoError(t, err)
+
+	_, err = store.Get(parcel.Number)
+	require.Error(t, err)
+
+	parcel2, err := service.Register(123, "Test Address 2")
+	require.NoError(t, err)
+
+	err = service.NextStatus(parcel2.Number)
+	require.NoError(t, err)
+
+	err = service.Delete(parcel2.Number)
+	require.Error(t, err)
+}
+
+func TestParcelService_PrintClientParcels(t *testing.T) {
+	db, err := sql.Open("sqlite", ":memory:")
+	require.NoError(t, err)
+	defer db.Close()
+
+	_, err = db.Exec(`CREATE TABLE parcel (
+        number INTEGER PRIMARY KEY AUTOINCREMENT,
+        client INTEGER,
+        status TEXT,
+        address TEXT,
+        created_at TEXT
+    )`)
+	require.NoError(t, err)
+
+	store := NewParcelStore(db)
+	service := NewParcelService(store)
+
+	clientID := 999
+
+	_, err = service.Register(clientID, "Address 1")
+	require.NoError(t, err)
+
+	_, err = service.Register(clientID, "Address 2")
+	require.NoError(t, err)
+
+	err = service.PrintClientParcels(clientID)
+	require.NoError(t, err)
+}
+
+func TestParcelService_ChangeAddress_NonExistentParcel(t *testing.T) {
+	db, err := sql.Open("sqlite", ":memory:")
+	require.NoError(t, err)
+	defer db.Close()
+
+	_, err = db.Exec(`CREATE TABLE parcel (
+        number INTEGER PRIMARY KEY AUTOINCREMENT,
+        client INTEGER,
+        status TEXT,
+        address TEXT,
+        created_at TEXT
+    )`)
+	require.NoError(t, err)
+
+	store := NewParcelStore(db)
+	service := NewParcelService(store)
+
+	err = service.ChangeAddress(9999, "New Address")
+	require.Error(t, err)
+}
+
+func TestParcelService_NextStatus_NonExistentParcel(t *testing.T) {
+	db, err := sql.Open("sqlite", ":memory:")
+	require.NoError(t, err)
+	defer db.Close()
+
+	_, err = db.Exec(`CREATE TABLE parcel (
+        number INTEGER PRIMARY KEY AUTOINCREMENT,
+        client INTEGER,
+        status TEXT,
+        address TEXT,
+        created_at TEXT
+    )`)
+	require.NoError(t, err)
+
+	store := NewParcelStore(db)
+	service := NewParcelService(store)
+
+	err = service.NextStatus(9999)
+	require.Error(t, err)
+}
