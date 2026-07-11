@@ -37,8 +37,9 @@ func (s ParcelStore) Get(number int) (Parcel, error) {
 
 	// заполните объект Parcel данными из таблицы
 	var p Parcel
-	row := s.db.QueryRow("SELECT client, status, address, created_at date FROM parcel WHERE number=?", number)
+	row := s.db.QueryRow("SELECT number, client, status, address, created_at FROM parcel WHERE number=?", number)
 	err := row.Scan(
+		&p.Number,
 		&p.Client,
 		&p.Status,
 		&p.Address,
@@ -47,9 +48,8 @@ func (s ParcelStore) Get(number int) (Parcel, error) {
 	if err != nil {
 		return Parcel{}, err
 	}
-	par := Parcel{Client: p.Client, Status: p.Status, Address: p.Address, CreatedAt: p.CreatedAt}
 
-	return par, nil
+	return p, nil
 }
 
 func (s ParcelStore) GetByClient(client int) ([]Parcel, error) {
@@ -57,7 +57,7 @@ func (s ParcelStore) GetByClient(client int) ([]Parcel, error) {
 	// здесь из таблицы может вернуться несколько строк
 
 	// заполните срез Parcel данными из таблицы
-	rows, err := s.db.Query("SELECT * FROM parcel WHERE client = ?", client)
+	rows, err := s.db.Query("SELECT number, client, status, address, created_at FROM parcel WHERE client = ?", client)
 	if err != nil {
 		return nil, err
 	}
@@ -77,6 +77,9 @@ func (s ParcelStore) GetByClient(client int) ([]Parcel, error) {
 			return nil, err
 		}
 		res = append(res, p)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
 	}
 	return res, nil
 }
